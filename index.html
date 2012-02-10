@@ -1,5 +1,176 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>A Gosu Library Writer's Manifesto</title>
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <link href="http://twitter.github.com/bootstrap/assets/css/bootstrap.css" rel="stylesheet">
+    <link href="http://twitter.github.com/bootstrap/assets/css/bootstrap-responsive.css" rel="stylesheet">
+    <link href="http://twitter.github.com/bootstrap/assets/js/google-code-prettify/prettify.css" rel="stylesheet">
+
+    <style>
+     p {
+	 		font-size:1.4em;
+	    line-height: 1.4em;
+     }
+     li {
+	 		font-size:1.4em;
+	    line-height: 1.4em;
+	    margin-bottom:10px;
+     }
+     body {
+			padding-top:60px;
+     }
+    </style>
+
+  </head>
+
   <body>
-    <h1>Placeholder</h1>
+<a href="https://github.com/carsongross/A-Gosu-Library-Writer-s-Manifesto"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://a248.e.akamai.net/assets.github.com/img/abad93f42020b733148435e2cd92ce15c542d320/687474703a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f677265656e5f3030373230302e706e67" alt="Fork me on GitHub"></a>
+
+    <div class="container">
+
+      <section id="intro">
+
+        <div class="page-header">
+          <h1>Introduction</h1>
+        </div>
+
+				<p>Gosu is a pragmatic language for the JVM.  It is designed to be simple yet reasonably powerful, and to not stray too far from Java, except where there are egregious issues.</p>
+				
+				<p>In Gosu, we are attempting to <b>simplify</b> the day-to-day life of Java developers. Two canonical examples are <em>local type inference</em>:</p>
+				
+				<pre class="prettyprint linenums">
+  var x = new ArrayList&lt;String>()</pre>
+				
+				<p>which allows coders to omit the explicit types of variables, cutting down on redundant type annotations, and <em>covariant generics</em>, which
+					means that <code>List&lt;String></code> can be assigned to <code>List&lt;Object></code>.  This is not sound (it is possible to introduce runtime errors)
+					but it simplifies day to day development by removing wild cards.</p>
+					
+				<p>This document is an attempt to map that same philosophy on to Gosu library development.</p>
+
+				<p><b>Note:</b> This is <i>Just My Opinion</i>&#8482; and in no way represents the thinking of anyone else, so reader beware.</p>
+
+      </section>
+
+      <section id="principles">
+
+        <div class="page-header">
+          <h1>Principles</h1>
+        </div>
+
+        <p>I propose the following principles for Gosu library development:</p>
+        
+        <ul>
+	        <li><b>Simplify It:</b> Any Gosu library should significantly simplify a Java library.  If a good Java library exists, a Gosu library writer should either leave well enough alone or embellish it with some high-value enhancements.</li>
+	        <li><b>Make It Scalable:</b> Gosu libraries should scale with the complexity of the task: make the simple things dead simple and the complicated things possible.</li>
+	        <li><b>Less Is More:</b> Gosu libraries should minimize the user-facing surface area.  Beware of elaborate APIs and object models.  Bias towards a minimum number of Classes.  If this implies more methods and more arguments per method, so be it.  End users can only keep so much in their head.</li>
+	        <li><b>The User Doesn't Care:</b> Most users of a library do not have the time nor the inclination to become a domain expert.  Gosu libraries should not force them to become one.  Hide implementation details as much as possible in the common case, but make them accessible for the gnarly case.</li>
+	        <li><b>Put The Method On The Object:</b> In Gosu, most users are going to explore and discover libraries via code completion.  Assume your API is discovered that way, and put methods on the things users will already have, rather than forcing them to construct new objects (or, Heaven Forbid, use a factory) to get at your API, at least in the simple case. <i>(Note that this implies <b>more</b> methods and <b>fewer</b> classes in your library.)</i></li>
+	        <li><b>Code Is Configuration:</b>  Gosu supports list and map literals, as well as object initializers.  These give you a fairly nice grammar to express
+		anything you might otherwise do in XML, JSON, YAML, etc.  By making your library configuration just code, you make it easier to debug and conditionally configure, and you get nice IDE support as well.</li>
+	      </ul>
+	
+	    </section>
+
+      <section id="examples">
+
+        <div class="page-header">
+          <h1>Examples</h1>
+        </div>
+
+				<h2>Reading A File</h2>
+				
+				<p>Reading a file in Java is difficult and tedious:</p>
+				
+				<pre class="prettyprint linenums">
+  byte[] buffer = new byte[(int) new File(filePath).length()];
+  BufferedInputStream f = null;
+  try {
+    f = new BufferedInputStream(new FileInputStream(filePath));
+    f.read(buffer);
+  } finally {
+    if (f != null) try { f.close(); } catch (IOException ignored) { }
+  }
+  return new String(buffer);</pre>
+	
+	   <p>This is clearly insane: how could a user possibly be expected to remember all this?</p>
+
+	   <p>In Gosu, the code is this:</p>
+	
+					<pre class="prettyprint linenums">
+  return new File(filePath).read()</pre>
+	
+     <p>The implementation is the same, but the API is much easier to understand and is discoverable right off the <code>File</code> object.</p>
+
+			<h2>Configuration In Ronin</h2>
+			
+			<p>In the <a href="http://ronin-web.org">Ronin</a> web framework, all application configuration is done via the <code>config.RoninConfig</code>.  Here is an example RoninConfig:</p>
+			
+			<pre class="prettyprint linenums">
+package config
+
+uses ronin.*
+uses ronin.config.*
+uses ronin.console.AdminConsole
+uses controller.*
+
+class RoninConfig extends DefaultRoninConfig {
+
+  construct(m : ApplicationMode, an : RoninServlet) {
+    super(m, an)
+
+    // set the JDBC connection string for the db
+    if(m == DEVELOPMENT) {
+      db.roblog.Database.JdbcUrl = "jdbc:h2:file:runtime/h2/devdb"
+    } else if(m == TESTING) {
+      db.roblog.Database.JdbcUrl = "jdbc:h2:file:runtime/h2/testdb"
+    } else if(m == STAGING) {
+      db.roblog.Database.JdbcUrl = "jdbc:h2:file:runtime/h2/stagingdb"
+    } else if(m == PRODUCTION) {
+      db.roblog.Database.JdbcUrl = "jdbc:h2:file:runtime/h2/proddb"
+    }
+
+    // Set up the default controller
+    DefaultController = controller.PostCx
+
+    // If we are in dev mode, enable console access
+    if(m == DEVELOPMENT) {
+      AdminConsole.start({"admin"})							
+    }
+  }
+}</pre>
+
+<p>All configuration for Ronin is out in the open and can be debugged, verified and searched easily.</p>
+
+  <section id="rant">
+
+    <div class="page-header">
+      <h1>A Brief Rant</h1>
+    </div>
+  
+    <p>I work in both statically and dynamically typed languages, and I've noticed that dynamically typed language libraries consistently have better APIs.
+I believe this is because dynamically typed languages are so difficult to deal with (no code completion or verification for typos, etc.) that elaborate
+libraries are simply impossible to use and, therefore, have a very low survival rate.</p>
+    <p>In Java, most people use IDEs, and a culture has arisen of making very elaborate APIs.  My theory here is that with enough mashing in a good IDE, you can typically get something to work, so the survival characteristics of these APIs is much higher.  Since the more elaborate APIs tend to be designed by domain experts and have a better core, they win out over time.</p>
+    <p>I also think part of it is general fear in the programming community of being seen as "stupid", where people assume an elaborate API must represent very intelligent design:  "What, you don't get it?"</p>
+    <p>I don't think it has to be this way.  A language should be able to support good tooling <b>and</b> have a culture of small, pleasant APIs.  This document is my attempt to foster that</p>
+
+  </section> 
+
+
+	
+	  </div> <!-- /container -->
+
+    <script src="http://twitter.github.com/bootstrap/assets/js/jquery.js"></script>
+    <script src="http://twitter.github.com/bootstrap/assets/js/google-code-prettify/prettify.js"></script>
+    <script src="http://twitter.github.com/bootstrap/assets/js/application.js"></script>
+    <script src="./js/site.js"></script>
+
   </body>
 </html>
